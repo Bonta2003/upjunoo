@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: upjunoo-backend
+    runtime: python
+    repo: https://github.com/Bonta2003/upjunoo
+    plan: free
+    region: oregon
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: MONGO_URI
+        value: "mongodb+srv://manuelleidrisse12_db_user:TON_MOT_DE_PASSE@projet0.trncdaw.mongodb.net/?appName=Projet0"
