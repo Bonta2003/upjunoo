@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>UPJUNOO - Tableau de bord de veille</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* RESET ET STYLES DE BASE */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f7fa;
+            color: #1a202c;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            font-size: 28px;
+            font-weight: 700;
+            color: #1a202c;
+            margin-bottom: 5px;
+        }
+
+        .subtitle {
+            color: #718096;
+            margin-bottom: 30px;
+            font-size: 16px;
+        }
+
+        /* GRILLE DE CARTES */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: white;
+            padding: 20px 18px;
+            border-radius: 16px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            transition: 0.2s;
+        }
+
+        .card:hover {
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        }
+
+        .card .label {
+            font-size: 13px;
+            font-weight: 600;
+            color: #a0aec0;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .card .value {
+            font-size: 32px;
+            font-weight: 700;
+            margin-top: 6px;
+            color: #2d3748;
+        }
+
+        .card .sub {
+            font-size: 14px;
+            color: #718096;
+            margin-top: 4px;
+        }
+
+        .card.accent .value {
+            color: #2b6cb0;
+        }
+
+        .card.green .value {
+            color: #38a169;
+        }
+
+        .card.orange .value {
+            color: #dd6b20;
+        }
+
+        .card.purple .value {
+            color: #805ad5;
+        }
+
+        /* SECTION CONTENU */
+        .row {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+
+        @media (max-width: 900px) {
+            .row {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .panel {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            padding: 20px;
+        }
+
+        .panel h2 {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: #2d3748;
+        }
+
+        /* LISTE DES TWEETS */
+        .tweet-item {
+            padding: 12px 0;
+            border-bottom: 1px solid #edf2f7;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 12px;
+        }
+
+        .tweet-item:last-child {
+            border-bottom: none;
+        }
+
+        .tweet-item .content {
+            flex: 1;
+        }
+
+        .tweet-item .text {
+            font-size: 14px;
+            color: #2d3748;
+            line-height: 1.5;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .tweet-item .meta {
+            font-size: 12px;
+            color: #a0aec0;
+            margin-top: 4px;
+        }
+
+        .tweet-item .badge {
+            background: #e2e8f0;
+            padding: 4px 12px;
+            border-radius: 50px;
+            font-size: 11px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .badge.suggestion {
+            background: #fefcbf;
+            color: #975a16;
+        }
+
+        .badge.positive {
+            background: #c6f6d5;
+            color: #22543d;
+        }
+
+        .badge.negative {
+            background: #fed7d7;
+            color: #9b2c2c;
+        }
+
+        .badge.neutral {
+            background: #e2e8f0;
+            color: #4a5568;
+        }
+
+        /* CHART WRAPPER */
+        .chart-wrapper {
+            height: 250px;
+            margin-top: 6px;
+        }
+
+        /* ÉTAT DE CHARGEMENT */
+        .loading {
+            text-align: center;
+            padding: 40px 0;
+            color: #718096;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* FOOTER */
+        .footer {
+            margin-top: 30px;
+            text-align: center;
+            font-size: 13px;
+            color: #a0aec0;
+            border-top: 1px solid #edf2f7;
+            padding-top: 20px;
+        }
+
+        .footer span {
+            font-weight: 600;
+            color: #2b6cb0;
+        }
+
+        .badge-pro {
+            background: #2b6cb0;
+            color: white;
+            font-size: 10px;
+            font-weight: 700;
+            padding: 2px 10px;
+            border-radius: 50px;
+            margin-left: 8px;
+            text-transform: uppercase;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <!-- HEADER -->
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
+            <div>
+                <h1>📊 UPJUNOO · Veille sociale</h1>
+                <div class="subtitle">Analyse en temps réel des mentions sur X (Twitter)</div>
+            </div>
+            <div style="font-size:14px; color:#718096;">
+                🔄 Dernière mise à jour : <span id="lastUpdate">Chargement...</span>
+            </div>
+        </div>
+
+        <!-- INDICATEURS CLÉS -->
+        <div class="grid" id="kpiGrid">
+            <div class="card accent">
+                <div class="label">📥 Tweets collectés</div>
+                <div class="value" id="totalTweets">-</div>
+                <div class="sub">Dernières 24h</div>
+            </div>
+            <div class="card green">
+                <div class="label">💡 Suggestions</div>
+                <div class="value" id="totalSuggestions">-</div>
+                <div class="sub">% des tweets</div>
+            </div>
+            <div class="card orange">
+                <div class="label">❤️ Total likes</div>
+                <div class="value" id="totalLikes">-</div>
+                <div class="sub">Engagement</div>
+            </div>
+            <div class="card purple">
+                <div class="label">👁️ Total vues</div>
+                <div class="value" id="totalViews">-</div>
+                <div class="sub">Portée cumulée</div>
+            </div>
+        </div>
+
+        <!-- ROW PRINCIPALE -->
+        <div class="row">
+            <!-- GAUCHE : Liste des tweets -->
+            
+
+            <!-- DROITE : Graphiques -->
+                    </div>
+
+        <!-- SECOND ROW : SUGGESTIONS POPULAIRES -->
+        
+
+        <div class="footer">
+            Projet UPJUNOO · Hackathon 2026 · Données issues de l'API X
+        </div>
+    </div>
+
+    <script>
+        // ================================================================
+        //  1. CONFIGURATION
+        // ================================================================
+        // IMPORTANT : votre API doit exposer les endpoints ci-dessous.
+        // Pour la démo, nous utilisons un simulateur intégré qui
+        // génère des données réalistes en attendant votre backend.
+        // 
+        // Pour connecter à votre vrai backend, remplacez l'URL ci-dessous
+        // par : http://localhost:5000/api/dashboard
+        // ================================================================
+
+        const API_URL = "https://upjunoo.onrender.com/api/dashboard"; // Mettez null pour utiliser le mode démo
+        // const API_URL = "http://localhost:5000/api/dashboard";
+
+        // ================================================================
+        //  2. DONNÉES DE DÉMONSTRATION (pour le hackathon)
+        //     Ces données simulent ce que votre backend MongoDB renverrait.
+        // ================================================================
+
+        function generateDemoData() {
+            const suggestions = [
+                "Ajouter un paiement mobile (Orange Money, MTN)",
+                "Plus de chauffeurs à Yopougon en soirée",
+                "Améliorer le temps de réponse du support",
+                "Proposer des abonnements hebdomadaires",
+                "Ajouter une option de partage de course",
+                "Réduire les frais d'annulation",
+                "Intégrer un système de notation des chauffeurs",
+                "Permettre la réservation à l'avance"
+            ];
+
+            const tweetTexts = [
+                "J'adore UPJUNOO, super service à Abidjan !",
+                "Il faudrait vraiment ajouter un paiement mobile sur UPJUNOO, ça serait top.",
+                "Course UPJUNOO annulée, déçu du service client.",
+                "UPJUNOO est moins cher que Yango, je recommande !",
+                "Pourquoi ne pas proposer un abonnement mensuel ?",
+                "Super expérience avec UPJUNOO aujourd'hui, chauffeur sympa.",
+                "Application UPJUNOO qui rame parfois, à améliorer.",
+                "Service client UPJUNOO réactif, merci pour l'aide.",
+                "Temps d'attente trop long à Abobo, il faut plus de chauffeurs.",
+                "UPJUNOO c'est devenu mon app préférée pour me déplacer."
+            ];
+
+            const tweets = [];
+            const now = new Date();
+
+            for (let i = 0; i < 25; i++) {
+                const isSuggestion = Math.random() < 0.35;
+                const isPositive = Math.random() < 0.45;
+                const isNegative = Math.random() < 0.25;
+                const sentiment = isPositive ? 'positive' : isNegative ? 'negative' : 'neutral';
+                const text = isSuggestion ?
+                    suggestions[Math.floor(Math.random() * suggestions.length)] :
+                    tweetTexts[Math.floor(Math.random() * tweetTexts.length)];
+
+                const d = new Date(now);
+                d.setHours(d.getHours() - Math.floor(Math.random() * 48));
+
+                tweets.push({
+                    id: `demo_${i}`,
+                    text: text,
+                    author: `user_${String.fromCharCode(65 + Math.floor(Math.random() * 26))}${Math.floor(Math.random() * 100)}`,
+                    created_at: d.toISOString(),
+                    metrics: {
+                        likes: Math.floor(Math.random() * 25),
+                        views: Math.floor(Math.random() * 500) + 10,
+                        retweets: Math.floor(Math.random() * 5),
+                    },
+                    is_suggestion: isSuggestion,
+                    suggestion_text: isSuggestion ? text : null,
+                    sentiment: sentiment
+                });
+            }
+
+            // Trier du plus récent au plus ancien
+            tweets.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+            const totalLikes = tweets.reduce((sum, t) => sum + t.metrics.likes, 0);
+            const totalViews = tweets.reduce((sum, t) => sum + t.metrics.views, 0);
+            const totalSuggestions = tweets.filter(t => t.is_suggestion).length;
+
+            // Agréger les suggestions populaires
+            const suggestionCounts = {};
+            tweets.forEach(t => {
+                if (t.is_suggestion && t.suggestion_text) {
+                    const key = t.suggestion_text;
+                    suggestionCounts[key] = (suggestionCounts[key] || 0) + 1;
+                }
+            });
+            const topSuggestions = Object.entries(suggestionCounts)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 5)
+                .map(([text, count]) => ({ text, count }));
+
+            return {
+                tweets: tweets.slice(0, 15),
+                total: tweets.length,
+                suggestions: totalSuggestions,
+                likes: totalLikes,
+                views: totalViews,
+                positive: tweets.filter(t => t.sentiment === 'positive').length,
+                neutral: tweets.filter(t => t.sentiment === 'neutral').length,
+                negative: tweets.filter(t => t.sentiment === 'negative').length,
+                topSuggestions: topSuggestions
+            };
+        }
+
+        // ================================================================
+        //  3. RÉCUPÉRATION DES DONNÉES
+        // ================================================================
+
+        let dashboardData = null;
+
+        async function fetchData() {
+            if (API_URL) {
+                try {
+                    const res = await fetch(API_URL);
+                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                    dashboardData = await res.json();
+                } catch (err) {
+                    console.warn('⚠️ Backend indisponible, bascule en mode démo.');
+                    dashboardData = generateDemoData();
+                }
+            } else {
+                // Mode démo : générer des données aléatoires à chaque chargement
+                dashboardData = generateDemoData();
+            }
+            return dashboardData;
+        }
+
+        // ================================================================
+        //  4. RENDU DU TABLEAU DE BORD
+        // ================================================================
+
+        function renderDashboard(data) {
+            if (!data) return;
+
+            // --- KPI ---
+            document.getElementById('totalTweets').textContent = data.total;
+            document.getElementById('totalSuggestions').textContent = data.suggestions;
+            document.getElementById('totalLikes').textContent = data.likes;
+            document.getElementById('totalViews').textContent = data.views.toLocaleString();
+
+            // --- Derniers tweets ---
+            const tweetListEl = document.getElementById('tweetList');
+            if (data.tweets.length === 0) {
+                tweetListEl.innerHTML = '<div style="color:#a0aec0;text-align:center;padding:20px;">Aucun tweet collecté pour l\'instant.</div>';
+            } else {
+                let html = '';
+                data.tweets.slice(0, 10).forEach(t => {
+                    const sentimentBadge = {
+                        positive: '<span class="badge positive">😊 Positif</span>',
+                        negative: '<span class="badge negative">😞 Négatif</span>',
+                        neutral: '<span class="badge neutral">😐 Neutre</span>'
+                    }[t.sentiment] || '<span class="badge neutral">😐 Neutre</span>';
+
+                    const suggestionBadge = t.is_suggestion ?
+                        '<span class="badge suggestion">💡 Suggestion</span>' :
+                        '';
+
+                    const date = new Date(t.created_at);
+                    const dateStr = date.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+
+                    html += `
+                        <div class="tweet-item">
+                            <div class="content">
+                                <div class="text">${escapeHtml(t.text)}</div>
+                                <div class="meta">
+                                    👤 ${t.author || 'anonyme'} · ${dateStr} · 
+                                    ❤️ ${t.metrics.likes} · 👁️ ${t.metrics.views}
+                                </div>
+                            </div>
+                            <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+                                ${suggestionBadge}
+                                ${sentimentBadge}
+                            </div>
+                        </div>
+                    `;
+                });
+                tweetListEl.innerHTML = html;
+            }
+
+            // --- Sentiments ---
+            document.getElementById('posCount').textContent = data.positive || 0;
+            document.getElementById('neuCount').textContent = data.neutral || 0;
+            document.getElementById('negCount').textContent = data.negative || 0;
+
+            // --- Graphique sentiment (Chart.js) ---
+            const ctx = document.getElementById('sentimentChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['😊 Positif', '😐 Neutre', '😞 Négatif'],
+                    datasets: [{
+                        data: [data.positive || 0, data.neutral || 0, data.negative || 0],
+                        backgroundColor: ['#38a169', '#a0aec0', '#e53e3e'],
+                        borderWidth: 0,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { padding: 14, usePointStyle: true, pointStyle: 'circle' }
+                        }
+                    },
+                    cutout: '65%'
+                }
+            });
+
+            // --- Suggestions populaires ---
+            const suggestionListEl = document.getElementById('suggestionList');
+            if (!data.topSuggestions || data.topSuggestions.length === 0) {
+                suggestionListEl.innerHTML = '<div style="color:#a0aec0;text-align:center;padding:16px;">Aucune suggestion émergente pour le moment.</div>';
+            } else {
+                let html = '<div style="display:flex;flex-wrap:wrap;gap:10px;">';
+                data.topSuggestions.forEach(s => {
+                    html += `
+                        <div style="background:#edf2f7;padding:8px 16px;border-radius:50px;font-size:14px;display:flex;align-items:center;gap:8px;">
+                            💡 ${escapeHtml(s.text)}
+                            <span style="background:#2b6cb0;color:white;border-radius:50px;padding:0 10px;font-size:12px;font-weight:600;">${s.count}x</span>
+                        </div>
+                    `;
+                });
+                html += '</div>';
+                suggestionListEl.innerHTML = html;
+            }
+
+            // --- Mise à jour horodatage ---
+            document.getElementById('lastUpdate').textContent = new Date().toLocaleString('fr-FR');
+        }
+
+        // ================================================================
+        //  5. UTILITAIRES
+        // ================================================================
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // ================================================================
+        //  6. LANCEMENT
+        // ================================================================
+
+        async function init() {
+            try {
+                const data = await fetchData();
+                renderDashboard(data);
+            } catch (err) {
+                console.error('Erreur:', err);
+                document.getElementById('tweetList').innerHTML =
+                    '<div style="color:#e53e3e;text-align:center;padding:20px;">❌ Erreur de chargement des données</div>';
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+
+</html>
